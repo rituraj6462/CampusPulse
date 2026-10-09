@@ -1,0 +1,24 @@
+{
+  "name": "campuspulse-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Full-Stack Campus Event Management Platform for ACM Student Chapter SRMIST",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -k -p \"[{name}]\" -n \"BACKEND,FRONTEND\" -c \"blue,cyan\" \"npm run dev -w @campuspulse/backend\" \"npm run dev -w @campuspulse/frontend\"",
+    "dev:backend": "npm run dev -w @campuspulse/backend",
+    "dev:frontend": "npm run dev -w @campuspulse/frontend",
+    "build": "npm run build -w @campuspulse/shared && npm run build -w @campuspulse/backend && npm run build -w @campuspulse/frontend",
+    "test": "npm run test -w @campuspulse/backend",
+    "db:migrate": "npm run db:migrate -w @campuspulse/backend",
+    "db:seed": "npm run db:seed -w @campuspulse/backend",
+    "db:studio": "npm run db:studio -w @campuspulse/backend"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "typescript": "^5.3.3"
+  }
+}

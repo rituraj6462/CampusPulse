@@ -1,0 +1,96 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --cp-bg: #FAF8F5;
+    --cp-surface: #FFFFFF;
+    --cp-elevated: #F5F1E8;
+    --cp-border: #E6E0D4;
+    --cp-border-subtle: #EFEBE2;
+    --cp-text: #1B1917;
+    --cp-text-muted: #686257;
+    --cp-text-dim: #999183;
+    --cp-cobalt: #1D4ED8;
+    --cp-cobalt-hover: #1E40AF;
+    --cp-cobalt-light: #EFF6FF;
+    --cp-success: #059669;
+    --cp-success-bg: #ECFDF5;
+    --cp-warning: #D97706;
+    --cp-warning-bg: #FFFBEB;
+    --cp-danger: #DC2626;
+    --cp-danger-bg: #FEF2F2;
+  }
+
+  .dark {
+    --cp-bg: #0B0F17;
+    --cp-surface: #111827;
+    --cp-elevated: #161F30;
+    --cp-border: #222E42;
+    --cp-border-subtle: #1A2436;
+    --cp-text: #F1F5F9;
+    --cp-text-muted: #94A3B8;
+    --cp-text-dim: #64748B;
+    --cp-cobalt: #3B82F6;
+    --cp-cobalt-hover: #60A5FA;
+    --cp-cobalt-light: rgba(59, 130, 246, 0.12);
+    --cp-success: #10B981;
+    --cp-success-bg: rgba(16, 185, 129, 0.12);
+    --cp-warning: #F59E0B;
+    --cp-warning-bg: rgba(245, 158, 11, 0.12);
+    --cp-danger: #EF4444;
+    --cp-danger-bg: rgba(239, 68, 68, 0.12);
+  }
+
+  * {
+    border-color: var(--cp-border);
+  }
+
+  body {
+    background-color: var(--cp-bg);
+    color: var(--cp-text);
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  /* Accessible focus states */
+  *:focus-visible {
+    outline: 2px solid var(--cp-cobalt);
+    outline-offset: 2px;
+  }
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--cp-border);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--cp-text-dim);
+}
+
+/* Subtle micro-interaction utility classes */
+.card-hover-effect {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease;
+}
+.card-hover-effect:hover {
+  transform: translateY(-2px);
+  border-color: var(--cp-cobalt);
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

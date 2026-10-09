@@ -1,0 +1,254 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String            @id @default(cuid())
+  email            String            @unique
+  passwordHash     String
+  name             String
+  role             String            @default("STUDENT") // STUDENT, ORGANIZER, ADMIN
+  avatar           String?
+  bio              String?
+  department       String?
+  graduationYear   Int?
+  isPassportPublic Boolean           @default(true)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  interests        UserInterest[]
+  organizedEvents  Event[]           @relation("OrganizerEvents")
+  registrations    Registration[]
+  waitlistEntries  WaitlistEntry[]
+  tickets          Ticket[]
+  attendances      Attendance[]
+  ledTeams         Team[]            @relation("TeamLeader")
+  teamMemberships  TeamMember[]
+  joinRequests     TeamJoinRequest[]
+  achievements     Achievement[]
+  notifications    Notification[]
+  feedbacks        EventFeedback[]
+  auditLogs        AuditLog[]        @relation("ActorAuditLogs")
+
+  @@index([role])
+}
+
+model UserInterest {
+  id       String @id @default(cuid())
+  userId   String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  interest String
+
+  @@unique([userId, interest])
+  @@index([interest])
+}
+
+model Event {
+  id                   String          @id @default(cuid())
+  title                String
+  slug                 String          @unique
+  description          String
+  shortDescription     String
+  category             String
+  venue                String
+  address              String?
+  bannerUrl            String?
+  organizerId          String
+  organizer            User            @relation("OrganizerEvents", fields: [organizerId], references: [id], onDelete: Cascade)
+  startDate            DateTime
+  endDate              DateTime
+  registrationDeadline DateTime
+  capacity             Int
+  isHackathon          Boolean         @default(false)
+  tags                 String          @default("[]") // JSON string array of tags
+  status               String          @default("PUBLISHED") // DRAFT, PUBLISHED, FULL, CANCELLED, COMPLETED
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+
+  registrations        Registration[]
+  waitlistEntries      WaitlistEntry[]
+  tickets              Ticket[]
+  attendances          Attendance[]
+  teams                Team[]
+  feedbacks            EventFeedback[]
+
+  @@index([status, startDate])
+  @@index([category])
+  @@index([organizerId])
+}
+
+model Registration {
+  id           String    @id @default(cuid())
+  eventId      String
+  event        Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status       String    @default("CONFIRMED") // CONFIRMED, CANCELLED, ATTENDED
+  registeredAt DateTime  @default(now())
+  cancelledAt  DateTime?
+
+  ticket       Ticket?
+
+  @@unique([eventId, userId])
+  @@index([eventId, status])
+  @@index([userId])
+}
+
+model Ticket {
+  id             String        @id @default(cuid())
+  ticketCode     String        @unique
+  registrationId String        @unique
+  registration   Registration  @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  eventId        String
+  event          Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  qrCodePayload  String
+  status         String        @default("VALID") // VALID, CHECKED_IN, VOIDED
+  issuedAt       DateTime      @default(now())
+
+  attendance     Attendance?
+
+  @@index([eventId])
+  @@index([userId])
+}
+
+model Attendance {
+  id          String   @id @default(cuid())
+  ticketId    String   @unique
+  ticket      Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  eventId     String
+  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  checkedInAt DateTime @default(now())
+  checkedInBy String
+
+  @@index([eventId])
+  @@index([userId])
+}
+
+model WaitlistEntry {
+  id             String    @id @default(cuid())
+  eventId        String
+  event          Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  position       Int
+  status         String    @default("WAITING") // WAITING, OFFERED, ACCEPTED, EXPIRED, CANCELLED
+  joinedAt       DateTime  @default(now())
+  offeredAt      DateTime?
+  offerExpiresAt DateTime?
+  resolvedAt     DateTime?
+
+  @@unique([eventId, userId])
+  @@index([eventId, status, position])
+}
+
+model Team {
+  id            String            @id @default(cuid())
+  eventId       String
+  event         Event             @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  name          String
+  description   String
+  maxMembers    Int               @default(4)
+  leaderId      String
+  leader        User              @relation("TeamLeader", fields: [leaderId], references: [id], onDelete: Cascade)
+  desiredSkills String            // JSON string array
+  offeredSkills String            // JSON string array
+  status        String            @default("RECRUITING") // RECRUITING, FULL, LOCKED
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  members       TeamMember[]
+  joinRequests  TeamJoinRequest[]
+
+  @@index([eventId])
+}
+
+model TeamMember {
+  id       String   @id @default(cuid())
+  teamId   String
+  team     Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role     String   @default("MEMBER") // LEADER, MEMBER
+  joinedAt DateTime @default(now())
+
+  @@unique([teamId, userId])
+}
+
+model TeamJoinRequest {
+  id          String    @id @default(cuid())
+  teamId      String
+  team        Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  message     String?
+  skills      String    // JSON string array
+  status      String    @default("PENDING") // PENDING, ACCEPTED, REJECTED
+  createdAt   DateTime  @default(now())
+  respondedAt DateTime?
+
+  @@unique([teamId, userId])
+}
+
+model Achievement {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badgeType   String
+  title       String
+  description String
+  icon        String
+  unlockedAt  DateTime @default(now())
+
+  @@unique([userId, badgeType])
+  @@index([userId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  type      String   // REGISTRATION, WAITLIST, TEAM, CHECK_IN, ANNOUNCEMENT
+  read      Boolean  @default(false)
+  link      String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, read])
+}
+
+model EventFeedback {
+  id        String   @id @default(cuid())
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rating    Int
+  comments  String?
+  createdAt DateTime @default(now())
+
+  @@unique([eventId, userId])
+}
+
+model AuditLog {
+  id             String   @id @default(cuid())
+  actorId        String?
+  actor          User?    @relation("ActorAuditLogs", fields: [actorId], references: [id], onDelete: SetNull)
+  action         String
+  targetResource String
+  targetId       String?
+  metadata       String?  // JSON string
+  ipAddress      String?
+  createdAt      DateTime @default(now())
+
+  @@index([action, createdAt])
+}
