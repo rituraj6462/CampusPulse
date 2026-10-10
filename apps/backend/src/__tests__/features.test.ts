@@ -41,20 +41,21 @@ describe('Distinctive Features Suite (Pulse Match, Team Up, Passport, Analytics)
     const hackathon = await prisma.event.findFirst({ where: { isHackathon: true } });
     expect(hackathon).toBeDefined();
 
-    // Student 2 (Aarav) registers for hackathon and requests to join NeuralDevs
-    const aaravLogin = await request(app).post('/api/auth/login').send({
-      email: 'aarav@srmist.edu.in',
-      password: 'Student@123'
+    // Register a fresh applicant so the test is completely isolated across runs
+    const applicantRes = await request(app).post('/api/auth/register').send({
+      name: 'Hackathon Applicant',
+      email: `applicant_${Date.now()}@srmist.edu.in`,
+      password: 'Password@123'
     });
-    const aaravToken = aaravLogin.body.data.token;
+    const applicantToken = applicantRes.body.data.token;
 
     await request(app)
       .post(`/api/events/${hackathon!.id}/register`)
-      .set('Authorization', `Bearer ${aaravToken}`);
+      .set('Authorization', `Bearer ${applicantToken}`);
 
     const teamsRes = await request(app)
       .get(`/api/events/${hackathon!.id}/teams`)
-      .set('Authorization', `Bearer ${aaravToken}`);
+      .set('Authorization', `Bearer ${applicantToken}`);
 
     expect(teamsRes.status).toBe(200);
     expect(teamsRes.body.data.length).toBeGreaterThan(0);
@@ -65,9 +66,9 @@ describe('Distinctive Features Suite (Pulse Match, Team Up, Passport, Analytics)
     // Send join request
     const joinReqRes = await request(app)
       .post(`/api/teams/${team.id}/request`)
-      .set('Authorization', `Bearer ${aaravToken}`)
+      .set('Authorization', `Bearer ${applicantToken}`)
       .send({
-        message: 'Aarav here, competitive coder ready to implement algorithms!',
+        message: 'Applicant here, competitive coder ready to implement algorithms!',
         skills: ['C++', 'Competitive Programming', 'Algorithms']
       });
 

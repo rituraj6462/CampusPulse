@@ -5,8 +5,8 @@ import { prisma } from '../db/prisma';
 
 describe('Event Registration, Capacity & Concurrency Suite', () => {
   let studentToken: string;
-  let student2Token: string;
   let organizerToken: string;
+  let openEventId: string;
 
   beforeAll(async () => {
     const s1 = await request(app).post('/api/auth/login').send({
@@ -15,27 +15,37 @@ describe('Event Registration, Capacity & Concurrency Suite', () => {
     });
     studentToken = s1.body.data.token;
 
-    const s2 = await request(app).post('/api/auth/login').send({
-      email: 'aarav@srmist.edu.in',
-      password: 'Student@123'
-    });
-    student2Token = s2.body.data.token;
-
     const org = await request(app).post('/api/auth/login').send({
       email: 'organizer@srmist.edu.in',
       password: 'Organizer@123'
     });
     organizerToken = org.body.data.token;
+    const organizerUser = org.body.data.user;
+
+    // Create an isolated open event for Test 1 (valid reg) and Test 2 (duplicate reg rejection)
+    const timestamp = Date.now();
+    const openEvent = await prisma.event.create({
+      data: {
+        title: `Open Event For Reg Suite ${timestamp}`,
+        slug: `open-event-reg-${timestamp}`,
+        shortDescription: 'Dedicated test event for registration flows',
+        description: 'Isolated test event.',
+        category: 'Workshops & Seminars',
+        venue: 'Hall 3',
+        organizerId: organizerUser.id,
+        startDate: new Date(Date.now() + 86400000),
+        endDate: new Date(Date.now() + 90000000),
+        registrationDeadline: new Date(Date.now() + 40000000),
+        capacity: 50,
+        status: 'PUBLISHED'
+      }
+    });
+    openEventId = openEvent.id;
   });
 
   it('should successfully register a student for an open event and return a valid QR ticket', async () => {
-    const event = await prisma.event.findFirst({
-      where: { slug: 'webcraft-next-fullstack-masterclass' }
-    });
-    expect(event).toBeDefined();
-
     const res = await request(app)
-      .post(`/api/events/${event!.id}/register`)
+      .post(`/api/events/${openEventId}/register`)
       .set('Authorization', `Bearer ${studentToken}`);
 
     expect(res.status).toBe(201);
@@ -45,12 +55,8 @@ describe('Event Registration, Capacity & Concurrency Suite', () => {
   });
 
   it('should reject duplicate registration for the same event with 409 Conflict', async () => {
-    const event = await prisma.event.findFirst({
-      where: { slug: 'webcraft-next-fullstack-masterclass' }
-    });
-
     const res = await request(app)
-      .post(`/api/events/${event!.id}/register`)
+      .post(`/api/events/${openEventId}/register`)
       .set('Authorization', `Bearer ${studentToken}`);
 
     expect(res.status).toBe(409);
@@ -59,11 +65,35 @@ describe('Event Registration, Capacity & Concurrency Suite', () => {
   });
 
   it('should reject registration when event is at full capacity', async () => {
-    // Event AI Summit has capacity 2, and 2 students are already registered
-    const fullEvent = await prisma.event.findFirst({
-      where: { slug: 'ai-summit-llms-autonomous-agents' }
+    const org = await prisma.user.findFirst({ where: { role: 'ORGANIZER' } });
+    const existingStudent = await prisma.user.findFirst({ where: { role: 'STUDENT' } });
+
+    // Create an isolated event with capacity 1 and pre-fill the only seat
+    const timestamp = Date.now();
+    const fullEvent = await prisma.event.create({
+      data: {
+        title: `Full Event ${timestamp}`,
+        slug: `full-event-${timestamp}`,
+        shortDescription: 'Isolated full capacity test event',
+        description: 'Testing capacity limit boundary.',
+        category: 'Workshops & Seminars',
+        venue: 'Room 105',
+        organizerId: org!.id,
+        startDate: new Date(Date.now() + 86400000),
+        endDate: new Date(Date.now() + 90000000),
+        registrationDeadline: new Date(Date.now() + 40000000),
+        capacity: 1,
+        status: 'PUBLISHED'
+      }
     });
-    expect(fullEvent).toBeDefined();
+
+    await prisma.registration.create({
+      data: {
+        eventId: fullEvent.id,
+        userId: existingStudent!.id,
+        status: 'CONFIRMED'
+      }
+    });
 
     // Create a new fresh student to attempt registration
     const freshStudentRes = await request(app).post('/api/auth/register').send({
@@ -74,7 +104,7 @@ describe('Event Registration, Capacity & Concurrency Suite', () => {
     const freshToken = freshStudentRes.body.data.token;
 
     const res = await request(app)
-      .post(`/api/events/${fullEvent!.id}/register`)
+      .post(`/api/events/${fullEvent.id}/register`)
       .set('Authorization', `Bearer ${freshToken}`);
 
     expect(res.status).toBe(409);

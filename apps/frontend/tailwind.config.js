@@ -4,7 +4,9 @@ export default {
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
-    "../../packages/shared/src/**/*.{js,ts,jsx,tsx}"
+    "./apps/frontend/index.html",
+    "./apps/frontend/src/**/*.{js,ts,jsx,tsx}",
+    "./packages/shared/src/**/*.{js,ts,jsx,tsx}"
   ],
   theme: {
     extend: {
